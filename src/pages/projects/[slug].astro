@@ -1,0 +1,18 @@
+---
+import SiteLayout from '../../layouts/SiteLayout.astro';
+import { projects } from '../../data/projects';
+
+export function getStaticPaths() {
+  return projects.map((project) => ({ params: { slug: project.slug }, props: { project } }));
+}
+
+const { project } = Astro.props;
+---
+<SiteLayout title={`${project.title} — mia under stars`}>
+  <main class="project-detail">
+    <a href="/#work">← Back to work</a>
+    <h1>{project.title}</h1>
+    <p class="lede">{project.description}</p>
+    <p class="meta">{project.stack}</p>
+  </main>
+</SiteLayout>

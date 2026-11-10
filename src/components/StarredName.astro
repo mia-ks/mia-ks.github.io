@@ -1,0 +1,5 @@
+---
+const { children = 'mia', italic = true } = Astro.props;
+const stars = [[8,8,1],[19,2,1.5],[31,7,1],[43,1,1],[55,6,1.5],[68,2,1],[80,8,1],[92,3,1],[14,17,.8],[38,15,.8],[63,17,1],[87,16,.8]];
+---
+<span class="starred-name"><span class="name-stars" aria-hidden="true">{stars.map(([x,y,r]) => <i style={`--x:${x}%;--y:${y}px;--r:${r}px`} />)}</span>{italic ? <em>{children}</em> : children}</span>

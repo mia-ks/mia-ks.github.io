@@ -1,26 +1,29 @@
 ---
 import SiteLayout from '../layouts/SiteLayout.astro';
+import ProjectCard from '../components/ProjectCard.astro';
+import StarredName from '../components/StarredName.astro';
+import { projects } from '../data/projects';
 ---
 <SiteLayout>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="mbf" color-interpolation-filters="sRGB" x="0" y="-5%" width="100%" height="110%"><feGaussianBlur id="mbb" stdDeviation="0 0"/></filter></svg>
 <header>
  <div class="row">
-  <div class="logo">mia under stars</div>
+  <div class="logo"><StarredName italic={false} /> under stars</div>
   <nav><button data-go="work" aria-current="true">Work</button><button data-go="about">About</button><button data-go="contact">Contact</button></nav>
   <div class="tools"><button id="refresh">↻ refresh</button><button id="invert">◐ invert</button><button id="flashbtn" aria-pressed="false" aria-label="Screen flash is on: click to turn off">✸</button></div>
  </div>
 </header>
 <div id="stage">
  <main id="live" class="layer"><div class="wrap">
-  <section data-page="work">
+  <section data-page="work" id="work">
    <h1>Weird solutions to <em>weirder</em> problems.</h1>
    <p class="lede">I make small tools for odd problems, mostly in Python.</p>
    <h2>Selected work</h2>
-   <div id="projects"></div>
+   <div id="projects">{projects.map((project, index) => <ProjectCard project={project} index={index} />)}</div>
   </section>
   <section data-page="about" hidden>
-   <h1>Hello, I’m <em>mia</em>.</h1>
+   <h1>Hello, I’m <StarredName />.</h1>
    <p class="lede">You might know me as some variant of “mia under stars”.</p>
    <p>Most of what I make starts as a small, slightly odd problem. pypeg came from wanting an alternative to 8mb.video, and metropod from wanting a music player that feels like an iPod.</p>
    <p>Away from my own projects, I do olympiad programming in Python and sometimes contribute to Minecraft mods.</p>
@@ -35,10 +38,10 @@ import SiteLayout from '../layouts/SiteLayout.astro';
   <section data-page="contact" hidden>
    <h1>Say <em>hi</em>.</h1>
    <p class="lede">The easiest place to find me is GitHub.</p>
-   <p class="big"><a href="https://github.com/vahvl" target="_blank" rel="noopener">github.com/vahvl</a></p>
+   <p class="big"><a href="https://github.com/mia-ks" target="_blank" rel="noopener">github.com/mia-ks</a></p>
    <h2>Elsewhere</h2>
    <div class="list">
-    <span>Code</span><span><a href="https://github.com/vahvl" target="_blank" rel="noopener">github.com/vahvl</a></span><span></span>
+    <span>Code</span><span><a href="https://github.com/mia-ks" target="_blank" rel="noopener">github.com/mia-ks</a></span><span></span>
     <span>Alias</span><span>mia under stars, or some variant of it</span><span></span>
    </div>
    <h2>About this site</h2>
@@ -74,27 +77,6 @@ function updateInk(){
  col1='rgb('+p.map((v,i)=>Math.max(0,v+k[i]-255)).join(',')+')';
  col2='rgb('+p.map((v,i)=>Math.min(255,v+k[i])).join(',')+')';
 }
-
-/* ---------- dot-matrix thumbnails ---------- */
-const tri=v=>Math.abs(((v%1)+1)%1-.5)*2;
-const SH=[
-/* pypeg: a film strip with a play triangle */
-(x,y)=>{const ax=Math.abs(x),ay=Math.abs(y);if(ax>.95||ay>.6)return false;if(ay>.34)return!(ay>.42&&ay<.52&&((x*3.2+10)%1)<.5);return ax>.84||(x>-.24&&x<.34&&ay<(.34-x)*.55)},
-/* metropod: an iPod, screen on top, click wheel below */
-(x,y)=>{const ax=Math.abs(x),d=Math.hypot(x,y-.46);const body=ax<.54&&Math.abs(y)<.93&&!(ax<.46&&Math.abs(y)<.85);const scr=ax<.34&&y>-.74&&y<-.18&&![-.6,-.45,-.3].some(l=>Math.abs(y-l)<.035&&ax<.24);return body||scr||(d>.25&&d<.36)||d<.1},
-/* olympiad: a medal on its ribbon */
-(x,y)=>{const ax=Math.abs(x),d=Math.hypot(x,y-.3);const rib=y>-.9&&y<-.1&&Math.abs(ax-(.12+(y+.9)*.26))<.085;return rib||(d>.27&&d<.4)||d<.1},
-/* minecraft mods: an isometric block, faces split by thin gaps */
-(x,y)=>{const ax=Math.abs(x),ay=Math.abs(y);if(ax>.72||ay>.84-ax*.57)return false;if(ax<.04&&y>0)return false;if(y<0&&Math.abs(y+ax*.57)<.045)return false;return true}
-];
-/* Real halftone: each cell is sampled 4x4, and dot radius follows how much of the cell the shape covers.
-   Empty cells keep a pinprick dot so the grid stays visible. Everything is solid ink, so it stays two-tone. */
-function icon(i){const W=32,H=24,S=4;let s='';for(let r=0;r<H;r++)for(let c=0;c<W;c++){let n=0;for(let a=0;a<S;a++)for(let b=0;b<S;b++){const x=(c+(b+.5)/S-W/2)/(H/2),y=(r+(a+.5)/S-H/2)/(H/2);if(SH[i](x,y))n++}const cov=n/(S*S),rad=cov>0?.16+.3*Math.sqrt(cov):.085;s+=`<circle cx="${c+.5}" cy="${r+.5}" r="${rad.toFixed(3)}"/>`}return`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${s}</svg>`}
-const P=[['pypeg','A friendly ffmpeg wrapper for squeezing video down to size, made as an alternative to 8mb.video.','Python, ffmpeg'],
-['metropod','An iPod-style interface built on top of Metrolist.','UI, music player'],
-['Olympiad programming','Competitive programming in Python, where the constraints are the fun part.','Python, algorithms'],
-['Minecraft mods','Occasional contributions to Minecraft mods.','Open source, Minecraft']];
-$('#projects').innerHTML=P.map((p,i)=>`<article class="proj"><div class="num">0${i+1}</div><div><h3>${p[0]}</h3><p>${p[1]}</p><div class="meta">${p[2]}</div></div><div class="thumb">${icon(i)}</div></article>`).join('');
 
 const hdr=document.querySelector('header');
 function measure(){live.style.paddingTop=(hdr.offsetHeight+32)+'px';spacer.style.height=live.offsetHeight+'px'}
@@ -261,111 +243,6 @@ function inkFrame(t){
  cx.fillStyle=col1;cx.fill(path);
  cx2.fillStyle=col2;cx2.fill(path);
 }
-
-/* ---------- every "mia" gets its own ink splash ---------- */
-(function(){
- const rng=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
- const f=v=>v.toFixed(1),CX=68,CY=54,RX=66,RY=48,N=22;
- function splash(seed){
-  const r=rng(seed*7919+13),pts=[],arms=new Set();
-  /* a few arms flung out sideways (never up/down, so they can't land on neighbouring lines) */
-  while(arms.size<3){const i=Math.floor(r()*N);if(Math.abs(Math.sin(i/N*6.2832))<.75)arms.add(i)}
-  for(let i=0;i<N;i++){
-   const a=(i+(r()-.5)*.5)/N*6.2832;let k=.88+r()*.24;
-   if(arms.has(i))k=1.1+r()*.1;else if(arms.has((i+1)%N)||arms.has((i+N-1)%N))k*=.93;
-   pts.push([CX+RX*k*Math.cos(a),CY+RY*k*Math.sin(a)]);
-  }
-  const P=i=>pts[(i+N)%N];let d='M'+f(P(0)[0])+' '+f(P(0)[1]);
-  for(let i=0;i<N;i++){const p0=P(i-1),p1=P(i),p2=P(i+1),p3=P(i+2);
-   d+='C'+[p1[0]+(p2[0]-p0[0])/6,p1[1]+(p2[1]-p0[1])/6,p2[0]-(p3[0]-p1[0])/6,p2[1]-(p3[1]-p1[1])/6,p2[0],p2[1]].map(f).join(' ')}
-  let s='<path class="sp" d="'+d+'Z"/><rect class="sp" x="10" y="42" width="116" height="42" rx="10"/>';
-  /* droplets, then a fine spray of dots */
-  for(let i=0;i<8;i++){const a=r()*6.2832,k=1.18+r()*.3;s+='<circle class="sp" cx="'+f(CX+RX*k*Math.cos(a))+'" cy="'+f(CY+RY*k*Math.sin(a)*.8)+'" r="'+f(1.2+r()*2.6)+'"/>'}
-  for(let i=0;i<16;i++){const a=r()*6.2832,k=1.08+r()*.32;s+='<circle class="sp" cx="'+f(CX+RX*k*Math.cos(a))+'" cy="'+f(CY+RY*k*Math.sin(a)*.85)+'" r="'+f(.6+r()*.9)+'"/>'}
-  /* stars: placed so the whole star (not just its center) stays inside the blob and above the letters */
-  const st=[],n=4+Math.floor(r()*3);
-  for(let t=0;st.length<n&&t<200;t++){
-   const R=3.4+r()*3,x=CX-46+r()*92,y=18+r()*22;
-   if(((Math.abs(x-CX)+R)/RX)**2+((Math.abs(y-CY)+R)/RY)**2>.5||y+R>40||st.some(q=>Math.hypot(q[0]-x,q[1]-y)<q[2]+R+3))continue;
-   st.push([x,y,R]);
-  }
-  return{svg:'<svg viewBox="0 0 137 100" aria-hidden="true">'+s+'</svg>',stars:st.map(q=>[q[0],q[1],q[2],Math.floor(r()*4),Math.floor(r()*4),3.4+r()*2.6,r()])};
- }
- let seed=0;
- const nodes=[];
- /* only the header logo and the About headline (its first mention) get a splash */
- for(const root of document.querySelectorAll('.logo,[data-page="about"] h1')){
-  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:n=>/\bmia\b/i.test(n.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_SKIP});
-  while(w.nextNode())nodes.push(w.currentNode);
- }
- for(const n of nodes){
-  const frag=document.createDocumentFragment();
-  const parts=n.nodeValue.split(/(\bmia\b)/i);
-  parts.forEach((part,i)=>{
-   if(/^mia$/i.test(part)){const s=document.createElement('span');s.className='mia';const sp=splash(seed++);s.innerHTML=sp.svg+'<canvas></canvas>';s._stars=sp.stars;s.insertBefore(document.createTextNode(part),s.firstChild);frag.appendChild(s)}
-   else if(part){
-    /* word joiner: stops a line break between the splash and a touching quote mark or punctuation */
-    if(i>0&&/^\S/.test(part))part='\u2060'+part;
-    if(i<parts.length-1&&/\S$/.test(part))part+='\u2060';
-    frag.appendChild(document.createTextNode(part));
-   }
-  });
-  n.replaceWith(frag);
- }
-
- /* ---- stars: a clean vector star, dithered per screen pixel, fading like an OLED dimming ----
-    The star is rasterised once per zoom level. Each frame a fade level (0-16) is compared against a 4x4 Bayer
-    pattern aligned to real device pixels: pixels switch off in a checker pattern first, then the rest.
-    Pixels are fully paper-colored or fully transparent, so it is strictly two-tone at any zoom. */
- const BAY=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
- const oc=document.createElement('canvas'),ox=oc.getContext('2d',{willReadFrequently:true});
- const boxes=[...document.querySelectorAll('.mia')].map(m=>({cv:m.querySelector('canvas'),css:0,dpr:0,w:0,h:0,
-  stars:m._stars.map(a=>({x:a[0],y:a[1],R:a[2],sx:a[3],sy:a[4],d:a[5],ph:a[6],q:-1}))}));
- boxes.forEach(b=>b.cx=b.cv.getContext('2d'));
- function fit(b){
-  const rect=b.cv.getBoundingClientRect(),dp=devicePixelRatio||1;
-  b.css=b.cv.offsetWidth;b.dpr=dp;
-  b.w=Math.max(1,Math.round(rect.width*dp));b.h=Math.max(1,Math.round(rect.height*dp));
-  b.cv.width=b.w;b.cv.height=b.h;
-  const u=b.w/137;
-  for(const st of b.stars){
-   const R=st.R,c=.14*R;
-   const x0=Math.max(0,Math.floor((st.x-R)*u)-1),y0=Math.max(0,Math.floor((st.y-R)*u)-1);
-   st.bx=x0;st.by=y0;st.bw=Math.max(1,Math.min(b.w,Math.ceil((st.x+R)*u)+1)-x0);st.bh=Math.max(1,Math.min(b.h,Math.ceil((st.y+R)*u)+1)-y0);
-   oc.width=st.bw;oc.height=st.bh;
-   ox.setTransform(u,0,0,u,st.x*u-x0,st.y*u-y0);
-   ox.fillStyle='#fff';ox.beginPath();ox.moveTo(0,-R);ox.quadraticCurveTo(c,-c,R,0);ox.quadraticCurveTo(c,c,0,R);ox.quadraticCurveTo(-c,c,-R,0);ox.quadraticCurveTo(-c,-c,0,-R);ox.fill();
-   const d=ox.getImageData(0,0,st.bw,st.bh).data;st.cov=new Uint8Array(st.bw*st.bh);
-   for(let i=0;i<st.cov.length;i++)st.cov[i]=d[i*4+3];
-   st.q=-1;
-  }
- }
- let pr=0,pg=0,pb=0,colKey='';
- function paint(b,st,q){
-  if(q===st.q)return;st.q=q;
-  const id=b.cx.createImageData(st.bw,st.bh),o=id.data,k=q/16;
-  for(let y=0;y<st.bh;y++)for(let x=0;x<st.bw;x++){
-   const i=y*st.bw+x;
-   if(st.cov[i]/255*k>(BAY[(st.by+y+st.sy)&3][(st.bx+x+st.sx)&3]+.5)/16){o[i*4]=pr;o[i*4+1]=pg;o[i*4+2]=pb;o[i*4+3]=255}
-  }
-  b.cx.putImageData(id,st.bx,st.by);
- }
- function tick(t){
-  const ck=getComputedStyle(root).getPropertyValue('--paper').trim();
-  if(ck!==colKey){colKey=ck;const c=hex(ck);pr=c[0];pg=c[1];pb=c[2];for(const b of boxes)for(const st of b.stars)st.q=-1}
-  for(const b of boxes){
-   const cw=b.cv.offsetWidth;if(!cw)continue;           /* hidden page: nothing to draw */
-   if(cw!==b.css||(devicePixelRatio||1)!==b.dpr)fit(b);  /* window resized or zoomed */
-   for(const st of b.stars){
-    let q=16;
-    if(!reduce){const c=.5+.5*Math.cos(6.2832*(t/1000/st.d+st.ph));q=Math.round(Math.max(0,Math.min(1,1.7*c-.35))*16)}
-    paint(b,st,q);
-   }
-  }
-  requestAnimationFrame(tick);
- }
- requestAnimationFrame(tick);
-})();
 
 const hp=location.hash.slice(1);
 if(PAGES.includes(hp))cur=hp;

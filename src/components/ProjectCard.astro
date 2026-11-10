@@ -1,0 +1,9 @@
+---
+import ProjectThumbnail from './ProjectThumbnail.astro';
+const { project, index } = Astro.props;
+---
+<article class="proj">
+  <div class="num">0{index + 1}</div>
+  <div><h3><a href={`/projects/${project.slug}/`}>{project.title}</a></h3><p>{project.description}</p><div class="meta">{project.stack}</div></div>
+  <div class="thumb"><ProjectThumbnail shape={index} /></div>
+</article>
