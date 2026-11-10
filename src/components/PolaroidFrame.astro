@@ -1,0 +1,14 @@
+---
+import ProjectArtwork from './ProjectArtwork.astro';
+const { kind, title } = Astro.props;
+---
+<div class="polaroid" role="img" aria-label={`${title} illustration`}>
+  <svg class="frame-texture" viewBox="0 0 240 260" aria-hidden="true">
+    <rect x="9" y="9" width="225" height="245" rx="5" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.2" />
+    <rect x="5" y="5" width="225" height="245" rx="5" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.4" />
+    <g stroke="var(--ink)" stroke-width="1" fill="none" stroke-linecap="round">
+      <path d="m173 243 12-12m-4 12 12-12m-4 12 12-12m-4 12 12-12m-4 12 12-12" />
+    </g>
+  </svg>
+  <div class="polaroid-photo"><ProjectArtwork kind={kind} /></div>
+</div>

@@ -22,14 +22,15 @@ export const projects: Project[] = [
   {
     slug: 'pypeg',
     title: 'pypeg',
-    description: 'A friendly ffmpeg wrapper for squeezing video down to size, made as an alternative to 8mb.video.',
+    source: 'https://github.com/Vahvl/comprustor',
+    description: 'A Python ffmpeg TUI for cutting and compressing clips. Rust rewrite in progress.',
     details: 'Python, ffmpeg',
   },
   {
     slug: 'metropod',
     title: 'metropod',
     description: 'An iPod-style interface built on top of Metrolist.',
-    details: 'Kotlin · Android',
+    details: '',
     source: 'https://github.com/mia-ks/Metropod',
   },
 ];

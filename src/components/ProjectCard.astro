@@ -1,13 +1,13 @@
 ---
-import ProjectArtwork from './ProjectArtwork.astro';
+import PolaroidFrame from './PolaroidFrame.astro';
 const { project, index } = Astro.props;
+const href = project.source ?? `/projects/${project.slug}/`;
 ---
 <article class="proj">
   <div class="num">0{index + 1}</div>
   <div>
-    <h3><a href={`/projects/${project.slug}/`}>{project.title}</a></h3>
+    <h3><a href={href} target={project.source ? '_blank' : undefined} rel={project.source ? 'noopener' : undefined}>{project.title}</a></h3>
     {project.description && <p>{project.description}</p>}
-    <div class="meta">{project.details}{project.source && <> · <a href={project.source} target="_blank" rel="noopener">Source</a></>}</div>
   </div>
-  <div class="thumb"><div class="thumb-art"><ProjectArtwork kind={project.slug === 'inky-sudoku' ? 'sudoku' : project.slug === 'inky-blocks' ? 'blocks' : project.slug} /></div></div>
+  <PolaroidFrame kind={project.slug === 'inky-sudoku' ? 'sudoku' : project.slug === 'inky-blocks' ? 'blocks' : project.slug} title={project.title} />
 </article>

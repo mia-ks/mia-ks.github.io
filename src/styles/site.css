@@ -58,10 +58,11 @@ a{color:inherit;text-decoration:underline;text-underline-offset:4px}
 .proj h3{font:500 28px/1.1 var(--serif);margin:0 0 8px}
 .proj p{margin:0 0 10px}
 .num,.meta{font:12px var(--ui);color:var(--mute)}
-.thumb{grid-column:3;grid-row:1;aspect-ratio:1;padding:10px 10px 28px;background:#f4f0e8;border:1px solid #d4ccba;box-shadow:0 5px 12px #17140f22;transform:rotate(-1.4deg)}
-.proj:nth-child(even) .thumb{transform:rotate(1.6deg)}
-.thumb-art{width:100%;aspect-ratio:1;overflow:hidden}
-.thumb svg{display:block;width:100%;height:100%}
+.polaroid{position:relative;grid-column:3;grid-row:1;aspect-ratio:12/13;transform:rotate(-1.4deg)}
+.proj:nth-child(even) .polaroid{transform:rotate(1.6deg)}
+.frame-texture{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.polaroid-photo{position:absolute;left:8.3333%;top:7.6923%;width:83.3333%;aspect-ratio:1;overflow:hidden;border:1px solid var(--ink);border-radius:2px;background:var(--paper)}
+.polaroid-photo>svg{display:block;width:100%;height:100%}
 .list{display:grid;grid-template-columns:110px 1fr auto;gap:8px 24px;font-size:18px}
 .list span:nth-child(3n+1),.list span:nth-child(3n){font:13px var(--ui);color:var(--mute)}
 .big{font:400 clamp(28px,6vw,52px)/1.1 var(--serif);letter-spacing:-.02em}
@@ -71,7 +72,7 @@ footer{margin-top:80px;font:11px var(--ui);color:var(--mute);letter-spacing:.06e
 #ink2{z-index:301}
 @media (hover:none){#ink,#ink2{display:none}}
 @media (hover:hover) and (pointer:fine){*{cursor:none!important}}
-@media (max-width:640px){.proj{grid-template-columns:1fr}.thumb{grid-column:1;grid-row:auto}.list{grid-template-columns:1fr}}
+@media (max-width:640px){.proj{grid-template-columns:1fr}.polaroid{grid-column:1;grid-row:auto;width:min(100%,380px)}.list{grid-template-columns:1fr}}
 /* A small star scatter sits above each featured name. */
 .starred-name{position:relative;display:inline-block;padding:0 .04em;margin:.28em .04em 0;color:inherit}
 .starred-name em{font-style:italic}
@@ -85,5 +86,4 @@ footer{margin-top:80px;font:11px var(--ui);color:var(--mute);letter-spacing:.06e
 .proj h3 a{text-decoration:none}
 .proj h3 a:hover{text-decoration:underline}
 
-.detail-art{width:min(440px,100%);padding:14px 14px 40px;margin-top:48px;background:#f4f0e8;border:1px solid #d4ccba;box-shadow:0 8px 18px #17140f22;transform:rotate(-1.2deg)}
-.detail-art svg{display:block;width:100%;height:auto}
+.project-detail .polaroid{width:min(440px,100%);margin-top:48px}
