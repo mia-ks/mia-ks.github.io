@@ -1,0 +1,703 @@
+---
+import SiteLayout from '../layouts/SiteLayout.astro';
+---
+<SiteLayout>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="mbf" color-interpolation-filters="sRGB" x="0" y="-5%" width="100%" height="110%"><feGaussianBlur id="mbb" stdDeviation="0 0"/></filter></svg>
+<header>
+ <div class="row">
+  <div class="logo">mia under stars</div>
+  <nav><button data-go="work" aria-current="true">Work</button><button data-go="about">About</button><button data-go="contact">Contact</button></nav>
+  <div class="tools"><button id="refresh">↻ refresh</button><button id="invert">◐ invert</button><button id="flashbtn" aria-pressed="false" aria-label="Screen flash is on: click to turn off">✸</button></div>
+ </div>
+</header>
+<div id="stage">
+ <main id="live" class="layer"><div class="wrap">
+  <section data-page="work">
+   <h1>Weird solutions to <em>weirder</em> problems.</h1>
+   <p class="lede">I make small tools for odd problems, mostly in Python.</p>
+   <h2>Selected work</h2>
+   <div id="projects"></div>
+  </section>
+  <section data-page="about" hidden>
+   <h1>Hello, I’m <em>mia</em>.</h1>
+   <p class="lede">You might know me as some variant of “mia under stars”.</p>
+   <p>Most of what I make starts as a small, slightly odd problem. pypeg came from wanting an alternative to 8mb.video, and metropod from wanting a music player that feels like an iPod.</p>
+   <p>Away from my own projects, I do olympiad programming in Python and sometimes contribute to Minecraft mods.</p>
+   <h2>Lately</h2>
+   <div class="list">
+    <span>Making</span><span>pypeg, a video compressor built on ffmpeg</span><span></span>
+    <span>Making</span><span>metropod, an iPod-style player built on Metrolist</span><span></span>
+    <span>Competing</span><span>Olympiad programming, in Python</span><span></span>
+    <span>Helping</span><span>Minecraft mods, now and then</span><span></span>
+   </div>
+  </section>
+  <section data-page="contact" hidden>
+   <h1>Say <em>hi</em>.</h1>
+   <p class="lede">The easiest place to find me is GitHub.</p>
+   <p class="big"><a href="https://github.com/vahvl" target="_blank" rel="noopener">github.com/vahvl</a></p>
+   <h2>Elsewhere</h2>
+   <div class="list">
+    <span>Code</span><span><a href="https://github.com/vahvl" target="_blank" rel="noopener">github.com/vahvl</a></span><span></span>
+    <span>Alias</span><span>mia under stars, or some variant of it</span><span></span>
+   </div>
+   <h2>About this site</h2>
+   <p>It’s a mock of an e-ink display, in a browser. Scroll slowly, then quickly. Wiggle the cursor and let it rest. Hit invert. Switch pages.</p>
+  </section>
+  <footer>© 2026 mia under stars — Set in Literata &amp; IBM Plex Mono</footer>
+ </div></main>
+</div>
+<div id="spacer"></div>
+<div id="tip" aria-hidden="true"></div>
+<canvas id="ink"></canvas><canvas id="ink2"></canvas>
+<script>
+const $=s=>document.querySelector(s),root=document.documentElement;
+const live=$('#live'),stage=$('#stage'),mb=$('#mbb'),spacer=$('#spacer');
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const PAGES=['work','about','contact'];
+let cur='work',busy=false;
+
+/* ---------- ink cursor state (declared early; used by the refresh helpers) ---------- */
+const cv=$('#ink'),cx=cv.getContext('2d'),cv2=$('#ink2'),cx2=cv2.getContext('2d');
+const G=2,LIFE=300;                    /* G: dot-matrix pitch in px · LIFE: how long a stroke lingers (ms) */
+const mk=document.createElement('canvas'),mx=mk.getContext('2d',{willReadFrequently:true});
+const hist=[];                           /* the stroke: points are pinned where they were laid down */
+let dpr=1,VW=0,VH=0,CS=2,GC=2,col1='#000',col2='#000';   /* CS: cell size in device px (always a whole number) · GC: same in css px */
+
+/* The ink swaps the two colors exactly: whatever is paper under it becomes ink and vice versa.
+   Two "difference" layers do it. Per color channel, with paper P and ink I:
+     layer 1 color = max(0, P+I-255)      layer 2 color = min(255, P+I)
+   (one layer alone only works when P+I <= 255 in every channel, which is why light mode went blue) */
+function hex(s){s=s.trim();if(s.startsWith('rgb'))return s.match(/[\d.]+/g).slice(0,3).map(Math.round);s=s.replace('#','');if(s.length===3)s=s.replace(/./g,'$&$&');return[0,2,4].map(i=>parseInt(s.substr(i,2),16))}
+function updateInk(){
+ const cs=getComputedStyle(root),p=hex(cs.getPropertyValue('--paper')),k=hex(cs.getPropertyValue('--ink'));
+ col1='rgb('+p.map((v,i)=>Math.max(0,v+k[i]-255)).join(',')+')';
+ col2='rgb('+p.map((v,i)=>Math.min(255,v+k[i])).join(',')+')';
+}
+
+/* ---------- dot-matrix thumbnails ---------- */
+const tri=v=>Math.abs(((v%1)+1)%1-.5)*2;
+const SH=[
+/* pypeg: a film strip with a play triangle */
+(x,y)=>{const ax=Math.abs(x),ay=Math.abs(y);if(ax>.95||ay>.6)return false;if(ay>.34)return!(ay>.42&&ay<.52&&((x*3.2+10)%1)<.5);return ax>.84||(x>-.24&&x<.34&&ay<(.34-x)*.55)},
+/* metropod: an iPod, screen on top, click wheel below */
+(x,y)=>{const ax=Math.abs(x),d=Math.hypot(x,y-.46);const body=ax<.54&&Math.abs(y)<.93&&!(ax<.46&&Math.abs(y)<.85);const scr=ax<.34&&y>-.74&&y<-.18&&![-.6,-.45,-.3].some(l=>Math.abs(y-l)<.035&&ax<.24);return body||scr||(d>.25&&d<.36)||d<.1},
+/* olympiad: a medal on its ribbon */
+(x,y)=>{const ax=Math.abs(x),d=Math.hypot(x,y-.3);const rib=y>-.9&&y<-.1&&Math.abs(ax-(.12+(y+.9)*.26))<.085;return rib||(d>.27&&d<.4)||d<.1},
+/* minecraft mods: an isometric block, faces split by thin gaps */
+(x,y)=>{const ax=Math.abs(x),ay=Math.abs(y);if(ax>.72||ay>.84-ax*.57)return false;if(ax<.04&&y>0)return false;if(y<0&&Math.abs(y+ax*.57)<.045)return false;return true}
+];
+/* Real halftone: each cell is sampled 4x4, and dot radius follows how much of the cell the shape covers.
+   Empty cells keep a pinprick dot so the grid stays visible. Everything is solid ink, so it stays two-tone. */
+function icon(i){const W=32,H=24,S=4;let s='';for(let r=0;r<H;r++)for(let c=0;c<W;c++){let n=0;for(let a=0;a<S;a++)for(let b=0;b<S;b++){const x=(c+(b+.5)/S-W/2)/(H/2),y=(r+(a+.5)/S-H/2)/(H/2);if(SH[i](x,y))n++}const cov=n/(S*S),rad=cov>0?.16+.3*Math.sqrt(cov):.085;s+=`<circle cx="${c+.5}" cy="${r+.5}" r="${rad.toFixed(3)}"/>`}return`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${s}</svg>`}
+const P=[['pypeg','A friendly ffmpeg wrapper for squeezing video down to size, made as an alternative to 8mb.video.','Python, ffmpeg'],
+['metropod','An iPod-style interface built on top of Metrolist.','UI, music player'],
+['Olympiad programming','Competitive programming in Python, where the constraints are the fun part.','Python, algorithms'],
+['Minecraft mods','Occasional contributions to Minecraft mods.','Open source, Minecraft']];
+$('#projects').innerHTML=P.map((p,i)=>`<article class="proj"><div class="num">0${i+1}</div><div><h3>${p[0]}</h3><p>${p[1]}</p><div class="meta">${p[2]}</div></div><div class="thumb">${icon(i)}</div></article>`).join('');
+
+const hdr=document.querySelector('header');
+function measure(){live.style.paddingTop=(hdr.offsetHeight+32)+'px';spacer.style.height=live.offsetHeight+'px'}
+function sync(){measure()}
+
+/* ---------- Kindle-style refresh, softened ----------
+   The "negative" is the site's own opposite palette (paper and ink trade places). Every step is a short
+   crossfade of the palette instead of a hard cut.
+   Page swap / refresh:  old page → negative (IN ms) → hold → new page appears under it, fades out of the negative (OUT ms).
+   Invert:               old page → negative → back to old page → new theme, each step IN ms. */
+const IN=130,HOLD=60,OUT=200,GAP=40;
+let fadeEnd=0;
+/* no-flash option: remembered between visits, and defaults to off for people who prefer reduced motion */
+let noflash;
+try{const s=localStorage.getItem('noflash');noflash=s===null?reduce:s==='1'}catch(e){noflash=reduce}
+const fb=$('#flashbtn');
+function paintFlash(){fb.textContent=noflash?'◌':'✸';fb.setAttribute('aria-pressed',String(noflash));const l=noflash?'Screen flash is off: click to turn on':'Screen flash is on: click to turn off';fb.setAttribute('aria-label',l)}
+const tip=$('#tip');
+function say(){
+ const r=fb.getBoundingClientRect(),hb=document.querySelector('header').getBoundingClientRect().bottom;
+ tip.innerHTML='<span class="in"><span class="out">page-flash refresh?</span></span>';
+ tip.style.right=(innerWidth-r.right)+'px';tip.style.top=(hb+10)+'px';
+ tip.classList.remove('go');void tip.offsetWidth;tip.classList.add('go');
+}
+fb.onpointerenter=e=>{if(e.pointerType!=='touch')say()};
+fb.onclick=()=>{noflash=!noflash;try{localStorage.setItem('noflash',noflash?'1':'0')}catch(e){}paintFlash();say()};
+paintFlash();
+function fadeTo(ms){root.style.setProperty('--td',ms+'ms');fadeEnd=performance.now()+ms+60}
+function neg(on,ms){fadeTo(ms);if(on)root.dataset.neg='1';else delete root.dataset.neg}
+function setTheme(t){root.dataset.theme=t;updateInk()}
+function refresh(mid){
+ if(busy)return;busy=true;
+ if(noflash){mid&&mid();busy=false;return}
+ hist.length=0;neg(true,IN);
+ setTimeout(()=>{
+  mid&&mid();hist.length=0;neg(false,OUT);
+  setTimeout(()=>{busy=false},OUT);
+ },IN+HOLD);
+}
+function show(p){
+ cur=p;
+ live.querySelectorAll('[data-page]').forEach(s=>s.hidden=s.dataset.page!==p);
+ document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-current',b.dataset.go===p));
+ sync();scrollTo(0,0);pos=0;apply();
+}
+function go(p){
+ if(p===cur||busy||!PAGES.includes(p))return;
+ refresh(()=>show(p));
+ try{history.replaceState(null,'','#'+p)}catch(e){}
+}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>go(b.dataset.go));
+$('#refresh').onclick=()=>refresh();
+$('#invert').onclick=()=>{
+ if(busy)return;
+ const t=root.dataset.theme==='dark'?'light':'dark';
+ if(noflash){setTheme(t);return}
+ busy=true;hist.length=0;neg(true,IN);
+ setTimeout(()=>{
+  neg(false,IN);
+  setTimeout(()=>{fadeTo(IN);setTheme(t);setTimeout(()=>{hist.length=0;busy=false},IN)},IN+GAP);
+ },IN+HOLD);
+};
+addEventListener('hashchange',()=>go(location.hash.slice(1)));
+addEventListener('resize',measure);
+if(document.fonts)document.fonts.ready.then(measure);
+if(window.ResizeObserver)new ResizeObserver(measure).observe(hdr);
+
+/* ---------- smooth scroll with vertical motion blur ---------- */
+let pos=0,tgt=0,lastT=0,blur=0;
+function apply(){live.style.transform=`translate3d(0,${(-pos).toFixed(2)}px,0)`}
+function loop(t){
+ tgt=scrollY;
+ const dt=Math.min(64,t-lastT||16);lastT=t;
+ const old=pos;
+ pos+=(tgt-pos)*(1-Math.exp(-dt/80));
+ if(Math.abs(tgt-pos)<.05)pos=tgt;
+ const vel=Math.abs(pos-old)/dt*1000;
+ blur+=(Math.min(20,vel*.011)-blur)*.35;
+ if(blur>.4){mb.setAttribute('stdDeviation','0 '+blur.toFixed(1));stage.style.filter='url(#mbf)'}else if(stage.style.filter)stage.style.filter='';
+ apply();
+ if(t<fadeEnd)updateInk();   /* keep the ink color in step while the palette crossfades */
+ inkFrame(t);
+ requestAnimationFrame(loop);
+}
+
+/* ---------- ink cursor ----------
+   A pen stroke: every point is laid down once and never moves again, so the trail keeps
+   the shape you drew. Each frame the stroke is rasterised to a tiny mask, then re-drawn as a
+   halftone: one dot per grid cell, dot size = ink density. Old ink thins out and breaks up into
+   scattered dots, then disappears. */
+function rs(){
+ /* the canvas is sized in whole device pixels and the dot grid in whole device pixels too, so at any
+    browser zoom the dots stay evenly spaced instead of rounding into uneven blocks */
+ dpr=Math.min(4,devicePixelRatio||1);VW=innerWidth;VH=innerHeight;
+ cv.width=cv2.width=Math.round(VW*dpr);cv.height=cv2.height=Math.round(VH*dpr);
+ cv.style.width=cv2.style.width=cv.width/dpr+'px';cv.style.height=cv2.style.height=cv.height/dpr+'px';
+ CS=Math.max(2,Math.round(G*dpr));GC=CS/dpr;
+ mk.width=Math.ceil(cv.width/CS);mk.height=Math.ceil(cv.height/CS);
+}
+rs();addEventListener('resize',rs);
+const m={x:-99,y:-99},h={x:-99,y:-99};
+let R=10,hot=false,lastMove=0,first=true;
+addEventListener('pointermove',e=>{
+ if(e.pointerType==='touch')return;
+ m.x=e.clientX;m.y=e.clientY;lastMove=performance.now();
+ if(first){first=false;h.x=m.x;h.y=m.y}
+});
+document.addEventListener('pointerover',e=>{hot=!!(e.target.closest&&e.target.closest('a,button'))});
+const hs=(x,y)=>{const n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n)};
+
+function inkFrame(t){
+ const idle=t-lastMove>1400;
+ R+=((hot?24:idle?3.5:10)-R)*.15;
+ h.x+=(m.x-h.x)*.4;h.y+=(m.y-h.y)*.4;
+ cx.setTransform(1,0,0,1,0,0);cx.clearRect(0,0,cv.width,cv.height);
+ cx2.setTransform(1,0,0,1,0,0);cx2.clearRect(0,0,cv2.width,cv2.height);
+ if(first)return;
+
+ /* points are stored in PAGE coordinates (screen y + scroll), so the ink sits on the paper:
+    it scrolls with the page, and a still cursor over a scrolling page draws a long vertical stroke */
+ const hy=h.y+pos,last=hist[hist.length-1];
+ if(!last||Math.hypot(h.x-last.x,hy-last.y)>=1.5)hist.push({x:h.x,y:hy,t:t,r:R});
+ while(hist.length&&t-hist[0].t>LIFE)hist.shift();
+ const pts=hist.concat({x:h.x,y:hy,t:t,r:R}).map(p=>({x:p.x,y:p.y-pos,t:p.t,r:p.r})),n=pts.length;
+
+ /* bounding box of the stroke, in mask cells */
+ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+ for(const p of pts){const e=p.r+3;if(p.x-e<x0)x0=p.x-e;if(p.y-e<y0)y0=p.y-e;if(p.x+e>x1)x1=p.x+e;if(p.y+e>y1)y1=p.y+e}
+ const bx=Math.max(0,Math.floor(x0/GC)),by=Math.max(0,Math.floor(y0/GC));
+ const bw=Math.min(mk.width,Math.ceil(x1/GC))-bx,bh=Math.min(mk.height,Math.ceil(y1/GC))-by;
+ if(bw<=0||bh<=0)return;
+
+ /* 1. stroke into the low-res mask (value = ink density, "lighten" keeps the max where strokes overlap) */
+ mx.setTransform(1,0,0,1,0,0);mx.globalCompositeOperation='source-over';
+ mx.fillStyle='#000';mx.fillRect(bx,by,bw,bh);
+ mx.setTransform(1/GC,0,0,1/GC,0,0);mx.globalCompositeOperation='lighten';
+ mx.lineCap='round';mx.lineJoin='round';
+ for(let i=0;i<n;i++){
+  const p=pts[i],a=Math.max(0,1-(t-p.t)/LIFE);
+  const w=2*p.r*Math.pow(a,.55);
+  if(w<.8)continue;
+  const v=Math.round(255*Math.min(1,a*1.8));
+  mx.strokeStyle='rgb('+v+','+v+','+v+')';mx.lineWidth=w;
+  const q0=pts[Math.max(0,i-1)],q1=pts[Math.min(n-1,i+1)];
+  const sx=i?(q0.x+p.x)/2:p.x,sy=i?(q0.y+p.y)/2:p.y;
+  const ex=i<n-1?(p.x+q1.x)/2:p.x,ey=i<n-1?(p.y+q1.y)/2:p.y;
+  mx.beginPath();mx.moveTo(sx,sy);mx.quadraticCurveTo(p.x,p.y,ex,ey);mx.stroke();
+ }
+
+ /* 2. read the mask back (only the stroke's bounding box) and draw one halftone dot per cell */
+ const d=mx.getImageData(bx,by,bw,bh).data;
+ /* round halftone dots on the whole-pixel grid; dot size follows ink density, so edges dissolve
+    into small dots instead of forming hard square steps */
+ const path=new Path2D();
+ for(let y=0;y<bh;y++)for(let x=0;x<bw;x++){
+  const v=d[(y*bw+x)*4]/255;
+  if(v<.08)continue;
+  const gx=bx+x,gy=by+y;
+  const r=CS*.54*Math.sqrt(Math.min(1,v*(.8+.4*hs(gx,gy))));
+  if(r<.5)continue;
+  const X=(gx+.5)*CS,Y=(gy+.5)*CS;
+  path.moveTo(X+r,Y);path.arc(X,Y,r,0,6.2832);
+ }
+ cx.fillStyle=col1;cx.fill(path);
+ cx2.fillStyle=col2;cx2.fill(path);
+}
+
+/* ---------- every "mia" gets its own ink splash ---------- */
+(function(){
+ const rng=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+ const f=v=>v.toFixed(1),CX=68,CY=54,RX=66,RY=48,N=22;
+ function splash(seed){
+  const r=rng(seed*7919+13),pts=[],arms=new Set();
+  /* a few arms flung out sideways (never up/down, so they can't land on neighbouring lines) */
+  while(arms.size<3){const i=Math.floor(r()*N);if(Math.abs(Math.sin(i/N*6.2832))<.75)arms.add(i)}
+  for(let i=0;i<N;i++){
+   const a=(i+(r()-.5)*.5)/N*6.2832;let k=.88+r()*.24;
+   if(arms.has(i))k=1.1+r()*.1;else if(arms.has((i+1)%N)||arms.has((i+N-1)%N))k*=.93;
+   pts.push([CX+RX*k*Math.cos(a),CY+RY*k*Math.sin(a)]);
+  }
+  const P=i=>pts[(i+N)%N];let d='M'+f(P(0)[0])+' '+f(P(0)[1]);
+  for(let i=0;i<N;i++){const p0=P(i-1),p1=P(i),p2=P(i+1),p3=P(i+2);
+   d+='C'+[p1[0]+(p2[0]-p0[0])/6,p1[1]+(p2[1]-p0[1])/6,p2[0]-(p3[0]-p1[0])/6,p2[1]-(p3[1]-p1[1])/6,p2[0],p2[1]].map(f).join(' ')}
+  let s='<path class="sp" d="'+d+'Z"/><rect class="sp" x="10" y="42" width="116" height="42" rx="10"/>';
+  /* droplets, then a fine spray of dots */
+  for(let i=0;i<8;i++){const a=r()*6.2832,k=1.18+r()*.3;s+='<circle class="sp" cx="'+f(CX+RX*k*Math.cos(a))+'" cy="'+f(CY+RY*k*Math.sin(a)*.8)+'" r="'+f(1.2+r()*2.6)+'"/>'}
+  for(let i=0;i<16;i++){const a=r()*6.2832,k=1.08+r()*.32;s+='<circle class="sp" cx="'+f(CX+RX*k*Math.cos(a))+'" cy="'+f(CY+RY*k*Math.sin(a)*.85)+'" r="'+f(.6+r()*.9)+'"/>'}
+  /* stars: placed so the whole star (not just its center) stays inside the blob and above the letters */
+  const st=[],n=4+Math.floor(r()*3);
+  for(let t=0;st.length<n&&t<200;t++){
+   const R=3.4+r()*3,x=CX-46+r()*92,y=18+r()*22;
+   if(((Math.abs(x-CX)+R)/RX)**2+((Math.abs(y-CY)+R)/RY)**2>.5||y+R>40||st.some(q=>Math.hypot(q[0]-x,q[1]-y)<q[2]+R+3))continue;
+   st.push([x,y,R]);
+  }
+  return{svg:'<svg viewBox="0 0 137 100" aria-hidden="true">'+s+'</svg>',stars:st.map(q=>[q[0],q[1],q[2],Math.floor(r()*4),Math.floor(r()*4),3.4+r()*2.6,r()])};
+ }
+ let seed=0;
+ const nodes=[];
+ /* only the header logo and the About headline (its first mention) get a splash */
+ for(const root of document.querySelectorAll('.logo,[data-page="about"] h1')){
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:n=>/\bmia\b/i.test(n.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_SKIP});
+  while(w.nextNode())nodes.push(w.currentNode);
+ }
+ for(const n of nodes){
+  const frag=document.createDocumentFragment();
+  const parts=n.nodeValue.split(/(\bmia\b)/i);
+  parts.forEach((part,i)=>{
+   if(/^mia$/i.test(part)){const s=document.createElement('span');s.className='mia';const sp=splash(seed++);s.innerHTML=sp.svg+'<canvas></canvas>';s._stars=sp.stars;s.insertBefore(document.createTextNode(part),s.firstChild);frag.appendChild(s)}
+   else if(part){
+    /* word joiner: stops a line break between the splash and a touching quote mark or punctuation */
+    if(i>0&&/^\S/.test(part))part='\u2060'+part;
+    if(i<parts.length-1&&/\S$/.test(part))part+='\u2060';
+    frag.appendChild(document.createTextNode(part));
+   }
+  });
+  n.replaceWith(frag);
+ }
+
+ /* ---- stars: a clean vector star, dithered per screen pixel, fading like an OLED dimming ----
+    The star is rasterised once per zoom level. Each frame a fade level (0-16) is compared against a 4x4 Bayer
+    pattern aligned to real device pixels: pixels switch off in a checker pattern first, then the rest.
+    Pixels are fully paper-colored or fully transparent, so it is strictly two-tone at any zoom. */
+ const BAY=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
+ const oc=document.createElement('canvas'),ox=oc.getContext('2d',{willReadFrequently:true});
+ const boxes=[...document.querySelectorAll('.mia')].map(m=>({cv:m.querySelector('canvas'),css:0,dpr:0,w:0,h:0,
+  stars:m._stars.map(a=>({x:a[0],y:a[1],R:a[2],sx:a[3],sy:a[4],d:a[5],ph:a[6],q:-1}))}));
+ boxes.forEach(b=>b.cx=b.cv.getContext('2d'));
+ function fit(b){
+  const rect=b.cv.getBoundingClientRect(),dp=devicePixelRatio||1;
+  b.css=b.cv.offsetWidth;b.dpr=dp;
+  b.w=Math.max(1,Math.round(rect.width*dp));b.h=Math.max(1,Math.round(rect.height*dp));
+  b.cv.width=b.w;b.cv.height=b.h;
+  const u=b.w/137;
+  for(const st of b.stars){
+   const R=st.R,c=.14*R;
+   const x0=Math.max(0,Math.floor((st.x-R)*u)-1),y0=Math.max(0,Math.floor((st.y-R)*u)-1);
+   st.bx=x0;st.by=y0;st.bw=Math.max(1,Math.min(b.w,Math.ceil((st.x+R)*u)+1)-x0);st.bh=Math.max(1,Math.min(b.h,Math.ceil((st.y+R)*u)+1)-y0);
+   oc.width=st.bw;oc.height=st.bh;
+   ox.setTransform(u,0,0,u,st.x*u-x0,st.y*u-y0);
+   ox.fillStyle='#fff';ox.beginPath();ox.moveTo(0,-R);ox.quadraticCurveTo(c,-c,R,0);ox.quadraticCurveTo(c,c,0,R);ox.quadraticCurveTo(-c,c,-R,0);ox.quadraticCurveTo(-c,-c,0,-R);ox.fill();
+   const d=ox.getImageData(0,0,st.bw,st.bh).data;st.cov=new Uint8Array(st.bw*st.bh);
+   for(let i=0;i<st.cov.length;i++)st.cov[i]=d[i*4+3];
+   st.q=-1;
+  }
+ }
+ let pr=0,pg=0,pb=0,colKey='';
+ function paint(b,st,q){
+  if(q===st.q)return;st.q=q;
+  const id=b.cx.createImageData(st.bw,st.bh),o=id.data,k=q/16;
+  for(let y=0;y<st.bh;y++)for(let x=0;x<st.bw;x++){
+   const i=y*st.bw+x;
+   if(st.cov[i]/255*k>(BAY[(st.by+y+st.sy)&3][(st.bx+x+st.sx)&3]+.5)/16){o[i*4]=pr;o[i*4+1]=pg;o[i*4+2]=pb;o[i*4+3]=255}
+  }
+  b.cx.putImageData(id,st.bx,st.by);
+ }
+ function tick(t){
+  const ck=getComputedStyle(root).getPropertyValue('--paper').trim();
+  if(ck!==colKey){colKey=ck;const c=hex(ck);pr=c[0];pg=c[1];pb=c[2];for(const b of boxes)for(const st of b.stars)st.q=-1}
+  for(const b of boxes){
+   const cw=b.cv.offsetWidth;if(!cw)continue;           /* hidden page: nothing to draw */
+   if(cw!==b.css||(devicePixelRatio||1)!==b.dpr)fit(b);  /* window resized or zoomed */
+   for(const st of b.stars){
+    let q=16;
+    if(!reduce){const c=.5+.5*Math.cos(6.2832*(t/1000/st.d+st.ph));q=Math.round(Math.max(0,Math.min(1,1.7*c-.35))*16)}
+    paint(b,st,q);
+   }
+  }
+  requestAnimationFrame(tick);
+ }
+ requestAnimationFrame(tick);
+})();
+
+const hp=location.hash.slice(1);
+if(PAGES.includes(hp))cur=hp;
+updateInk();
+show(cur);
+requestAnimationFrame(loop);
+</script>
+
+<script>
+
+const $=s=>document.querySelector(s),root=document.documentElement;
+const live=$('#live'),stage=$('#stage'),mb=$('#mbb'),spacer=$('#spacer');
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const PAGES=['work','about','contact'];
+let cur='work',busy=false;
+
+/* ---------- ink cursor state (declared early; used by the refresh helpers) ---------- */
+const cv=$('#ink'),cx=cv.getContext('2d'),cv2=$('#ink2'),cx2=cv2.getContext('2d');
+const G=2,LIFE=300;                    /* G: dot-matrix pitch in px · LIFE: how long a stroke lingers (ms) */
+const mk=document.createElement('canvas'),mx=mk.getContext('2d',{willReadFrequently:true});
+const hist=[];                           /* the stroke: points are pinned where they were laid down */
+let dpr=1,VW=0,VH=0,CS=2,GC=2,col1='#000',col2='#000';   /* CS: cell size in device px (always a whole number) · GC: same in css px */
+
+/* The ink swaps the two colors exactly: whatever is paper under it becomes ink and vice versa.
+   Two "difference" layers do it. Per color channel, with paper P and ink I:
+     layer 1 color = max(0, P+I-255)      layer 2 color = min(255, P+I)
+   (one layer alone only works when P+I <= 255 in every channel, which is why light mode went blue) */
+function hex(s){s=s.trim();if(s.startsWith('rgb'))return s.match(/[\d.]+/g).slice(0,3).map(Math.round);s=s.replace('#','');if(s.length===3)s=s.replace(/./g,'$&$&');return[0,2,4].map(i=>parseInt(s.substr(i,2),16))}
+function updateInk(){
+ const cs=getComputedStyle(root),p=hex(cs.getPropertyValue('--paper')),k=hex(cs.getPropertyValue('--ink'));
+ col1='rgb('+p.map((v,i)=>Math.max(0,v+k[i]-255)).join(',')+')';
+ col2='rgb('+p.map((v,i)=>Math.min(255,v+k[i])).join(',')+')';
+}
+
+/* ---------- dot-matrix thumbnails ---------- */
+const tri=v=>Math.abs(((v%1)+1)%1-.5)*2;
+const SH=[
+/* pypeg: a film strip with a play triangle */
+(x,y)=>{const ax=Math.abs(x),ay=Math.abs(y);if(ax>.95||ay>.6)return false;if(ay>.34)return!(ay>.42&&ay<.52&&((x*3.2+10)%1)<.5);return ax>.84||(x>-.24&&x<.34&&ay<(.34-x)*.55)},
+/* metropod: an iPod, screen on top, click wheel below */
+(x,y)=>{const ax=Math.abs(x),d=Math.hypot(x,y-.46);const body=ax<.54&&Math.abs(y)<.93&&!(ax<.46&&Math.abs(y)<.85);const scr=ax<.34&&y>-.74&&y<-.18&&![-.6,-.45,-.3].some(l=>Math.abs(y-l)<.035&&ax<.24);return body||scr||(d>.25&&d<.36)||d<.1},
+/* olympiad: a medal on its ribbon */
+(x,y)=>{const ax=Math.abs(x),d=Math.hypot(x,y-.3);const rib=y>-.9&&y<-.1&&Math.abs(ax-(.12+(y+.9)*.26))<.085;return rib||(d>.27&&d<.4)||d<.1},
+/* minecraft mods: an isometric block, faces split by thin gaps */
+(x,y)=>{const ax=Math.abs(x),ay=Math.abs(y);if(ax>.72||ay>.84-ax*.57)return false;if(ax<.04&&y>0)return false;if(y<0&&Math.abs(y+ax*.57)<.045)return false;return true}
+];
+/* Real halftone: each cell is sampled 4x4, and dot radius follows how much of the cell the shape covers.
+   Empty cells keep a pinprick dot so the grid stays visible. Everything is solid ink, so it stays two-tone. */
+function icon(i){const W=32,H=24,S=4;let s='';for(let r=0;r<H;r++)for(let c=0;c<W;c++){let n=0;for(let a=0;a<S;a++)for(let b=0;b<S;b++){const x=(c+(b+.5)/S-W/2)/(H/2),y=(r+(a+.5)/S-H/2)/(H/2);if(SH[i](x,y))n++}const cov=n/(S*S),rad=cov>0?.16+.3*Math.sqrt(cov):.085;s+=`<circle cx="${c+.5}" cy="${r+.5}" r="${rad.toFixed(3)}"/>`}return`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${s}</svg>`}
+const P=[['pypeg','A friendly ffmpeg wrapper for squeezing video down to size, made as an alternative to 8mb.video.','Python, ffmpeg'],
+['metropod','An iPod-style interface built on top of Metrolist.','UI, music player'],
+['Olympiad programming','Competitive programming in Python, where the constraints are the fun part.','Python, algorithms'],
+['Minecraft mods','Occasional contributions to Minecraft mods.','Open source, Minecraft']];
+$('#projects').innerHTML=P.map((p,i)=>`<article class="proj"><div class="num">0${i+1}</div><div><h3>${p[0]}</h3><p>${p[1]}</p><div class="meta">${p[2]}</div></div><div class="thumb">${icon(i)}</div></article>`).join('');
+
+const hdr=document.querySelector('header');
+function measure(){live.style.paddingTop=(hdr.offsetHeight+32)+'px';spacer.style.height=live.offsetHeight+'px'}
+function sync(){measure()}
+
+/* ---------- Kindle-style refresh, softened ----------
+   The "negative" is the site's own opposite palette (paper and ink trade places). Every step is a short
+   crossfade of the palette instead of a hard cut.
+   Page swap / refresh:  old page → negative (IN ms) → hold → new page appears under it, fades out of the negative (OUT ms).
+   Invert:               old page → negative → back to old page → new theme, each step IN ms. */
+const IN=130,HOLD=60,OUT=200,GAP=40;
+let fadeEnd=0;
+/* no-flash option: remembered between visits, and defaults to off for people who prefer reduced motion */
+let noflash;
+try{const s=localStorage.getItem('noflash');noflash=s===null?reduce:s==='1'}catch(e){noflash=reduce}
+const fb=$('#flashbtn');
+function paintFlash(){fb.textContent=noflash?'◌':'✸';fb.setAttribute('aria-pressed',String(noflash));const l=noflash?'Screen flash is off: click to turn on':'Screen flash is on: click to turn off';fb.setAttribute('aria-label',l)}
+const tip=$('#tip');
+function say(){
+ const r=fb.getBoundingClientRect(),hb=document.querySelector('header').getBoundingClientRect().bottom;
+ tip.innerHTML='<span class="in"><span class="out">page-flash refresh?</span></span>';
+ tip.style.right=(innerWidth-r.right)+'px';tip.style.top=(hb+10)+'px';
+ tip.classList.remove('go');void tip.offsetWidth;tip.classList.add('go');
+}
+fb.onpointerenter=e=>{if(e.pointerType!=='touch')say()};
+fb.onclick=()=>{noflash=!noflash;try{localStorage.setItem('noflash',noflash?'1':'0')}catch(e){}paintFlash();say()};
+paintFlash();
+function fadeTo(ms){root.style.setProperty('--td',ms+'ms');fadeEnd=performance.now()+ms+60}
+function neg(on,ms){fadeTo(ms);if(on)root.dataset.neg='1';else delete root.dataset.neg}
+function setTheme(t){root.dataset.theme=t;updateInk()}
+function refresh(mid){
+ if(busy)return;busy=true;
+ if(noflash){mid&&mid();busy=false;return}
+ hist.length=0;neg(true,IN);
+ setTimeout(()=>{
+  mid&&mid();hist.length=0;neg(false,OUT);
+  setTimeout(()=>{busy=false},OUT);
+ },IN+HOLD);
+}
+function show(p){
+ cur=p;
+ live.querySelectorAll('[data-page]').forEach(s=>s.hidden=s.dataset.page!==p);
+ document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-current',b.dataset.go===p));
+ sync();scrollTo(0,0);pos=0;apply();
+}
+function go(p){
+ if(p===cur||busy||!PAGES.includes(p))return;
+ refresh(()=>show(p));
+ try{history.replaceState(null,'','#'+p)}catch(e){}
+}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>go(b.dataset.go));
+$('#refresh').onclick=()=>refresh();
+$('#invert').onclick=()=>{
+ if(busy)return;
+ const t=root.dataset.theme==='dark'?'light':'dark';
+ if(noflash){setTheme(t);return}
+ busy=true;hist.length=0;neg(true,IN);
+ setTimeout(()=>{
+  neg(false,IN);
+  setTimeout(()=>{fadeTo(IN);setTheme(t);setTimeout(()=>{hist.length=0;busy=false},IN)},IN+GAP);
+ },IN+HOLD);
+};
+addEventListener('hashchange',()=>go(location.hash.slice(1)));
+addEventListener('resize',measure);
+if(document.fonts)document.fonts.ready.then(measure);
+if(window.ResizeObserver)new ResizeObserver(measure).observe(hdr);
+
+/* ---------- smooth scroll with vertical motion blur ---------- */
+let pos=0,tgt=0,lastT=0,blur=0;
+function apply(){live.style.transform=`translate3d(0,${(-pos).toFixed(2)}px,0)`}
+function loop(t){
+ tgt=scrollY;
+ const dt=Math.min(64,t-lastT||16);lastT=t;
+ const old=pos;
+ pos+=(tgt-pos)*(1-Math.exp(-dt/80));
+ if(Math.abs(tgt-pos)<.05)pos=tgt;
+ const vel=Math.abs(pos-old)/dt*1000;
+ blur+=(Math.min(20,vel*.011)-blur)*.35;
+ if(blur>.4){mb.setAttribute('stdDeviation','0 '+blur.toFixed(1));stage.style.filter='url(#mbf)'}else if(stage.style.filter)stage.style.filter='';
+ apply();
+ if(t<fadeEnd)updateInk();   /* keep the ink color in step while the palette crossfades */
+ inkFrame(t);
+ requestAnimationFrame(loop);
+}
+
+/* ---------- ink cursor ----------
+   A pen stroke: every point is laid down once and never moves again, so the trail keeps
+   the shape you drew. Each frame the stroke is rasterised to a tiny mask, then re-drawn as a
+   halftone: one dot per grid cell, dot size = ink density. Old ink thins out and breaks up into
+   scattered dots, then disappears. */
+function rs(){
+ /* the canvas is sized in whole device pixels and the dot grid in whole device pixels too, so at any
+    browser zoom the dots stay evenly spaced instead of rounding into uneven blocks */
+ dpr=Math.min(4,devicePixelRatio||1);VW=innerWidth;VH=innerHeight;
+ cv.width=cv2.width=Math.round(VW*dpr);cv.height=cv2.height=Math.round(VH*dpr);
+ cv.style.width=cv2.style.width=cv.width/dpr+'px';cv.style.height=cv2.style.height=cv.height/dpr+'px';
+ CS=Math.max(2,Math.round(G*dpr));GC=CS/dpr;
+ mk.width=Math.ceil(cv.width/CS);mk.height=Math.ceil(cv.height/CS);
+}
+rs();addEventListener('resize',rs);
+const m={x:-99,y:-99},h={x:-99,y:-99};
+let R=10,hot=false,lastMove=0,first=true;
+addEventListener('pointermove',e=>{
+ if(e.pointerType==='touch')return;
+ m.x=e.clientX;m.y=e.clientY;lastMove=performance.now();
+ if(first){first=false;h.x=m.x;h.y=m.y}
+});
+document.addEventListener('pointerover',e=>{hot=!!(e.target.closest&&e.target.closest('a,button'))});
+const hs=(x,y)=>{const n=Math.sin(x*127.1+y*311.7)*43758.5453;return n-Math.floor(n)};
+
+function inkFrame(t){
+ const idle=t-lastMove>1400;
+ R+=((hot?24:idle?3.5:10)-R)*.15;
+ h.x+=(m.x-h.x)*.4;h.y+=(m.y-h.y)*.4;
+ cx.setTransform(1,0,0,1,0,0);cx.clearRect(0,0,cv.width,cv.height);
+ cx2.setTransform(1,0,0,1,0,0);cx2.clearRect(0,0,cv2.width,cv2.height);
+ if(first)return;
+
+ /* points are stored in PAGE coordinates (screen y + scroll), so the ink sits on the paper:
+    it scrolls with the page, and a still cursor over a scrolling page draws a long vertical stroke */
+ const hy=h.y+pos,last=hist[hist.length-1];
+ if(!last||Math.hypot(h.x-last.x,hy-last.y)>=1.5)hist.push({x:h.x,y:hy,t:t,r:R});
+ while(hist.length&&t-hist[0].t>LIFE)hist.shift();
+ const pts=hist.concat({x:h.x,y:hy,t:t,r:R}).map(p=>({x:p.x,y:p.y-pos,t:p.t,r:p.r})),n=pts.length;
+
+ /* bounding box of the stroke, in mask cells */
+ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+ for(const p of pts){const e=p.r+3;if(p.x-e<x0)x0=p.x-e;if(p.y-e<y0)y0=p.y-e;if(p.x+e>x1)x1=p.x+e;if(p.y+e>y1)y1=p.y+e}
+ const bx=Math.max(0,Math.floor(x0/GC)),by=Math.max(0,Math.floor(y0/GC));
+ const bw=Math.min(mk.width,Math.ceil(x1/GC))-bx,bh=Math.min(mk.height,Math.ceil(y1/GC))-by;
+ if(bw<=0||bh<=0)return;
+
+ /* 1. stroke into the low-res mask (value = ink density, "lighten" keeps the max where strokes overlap) */
+ mx.setTransform(1,0,0,1,0,0);mx.globalCompositeOperation='source-over';
+ mx.fillStyle='#000';mx.fillRect(bx,by,bw,bh);
+ mx.setTransform(1/GC,0,0,1/GC,0,0);mx.globalCompositeOperation='lighten';
+ mx.lineCap='round';mx.lineJoin='round';
+ for(let i=0;i<n;i++){
+  const p=pts[i],a=Math.max(0,1-(t-p.t)/LIFE);
+  const w=2*p.r*Math.pow(a,.55);
+  if(w<.8)continue;
+  const v=Math.round(255*Math.min(1,a*1.8));
+  mx.strokeStyle='rgb('+v+','+v+','+v+')';mx.lineWidth=w;
+  const q0=pts[Math.max(0,i-1)],q1=pts[Math.min(n-1,i+1)];
+  const sx=i?(q0.x+p.x)/2:p.x,sy=i?(q0.y+p.y)/2:p.y;
+  const ex=i<n-1?(p.x+q1.x)/2:p.x,ey=i<n-1?(p.y+q1.y)/2:p.y;
+  mx.beginPath();mx.moveTo(sx,sy);mx.quadraticCurveTo(p.x,p.y,ex,ey);mx.stroke();
+ }
+
+ /* 2. read the mask back (only the stroke's bounding box) and draw one halftone dot per cell */
+ const d=mx.getImageData(bx,by,bw,bh).data;
+ /* round halftone dots on the whole-pixel grid; dot size follows ink density, so edges dissolve
+    into small dots instead of forming hard square steps */
+ const path=new Path2D();
+ for(let y=0;y<bh;y++)for(let x=0;x<bw;x++){
+  const v=d[(y*bw+x)*4]/255;
+  if(v<.08)continue;
+  const gx=bx+x,gy=by+y;
+  const r=CS*.54*Math.sqrt(Math.min(1,v*(.8+.4*hs(gx,gy))));
+  if(r<.5)continue;
+  const X=(gx+.5)*CS,Y=(gy+.5)*CS;
+  path.moveTo(X+r,Y);path.arc(X,Y,r,0,6.2832);
+ }
+ cx.fillStyle=col1;cx.fill(path);
+ cx2.fillStyle=col2;cx2.fill(path);
+}
+
+/* ---------- every "mia" gets its own ink splash ---------- */
+(function(){
+ const rng=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+ const f=v=>v.toFixed(1),CX=68,CY=54,RX=66,RY=48,N=22;
+ function splash(seed){
+  const r=rng(seed*7919+13),pts=[],arms=new Set();
+  /* a few arms flung out sideways (never up/down, so they can't land on neighbouring lines) */
+  while(arms.size<3){const i=Math.floor(r()*N);if(Math.abs(Math.sin(i/N*6.2832))<.75)arms.add(i)}
+  for(let i=0;i<N;i++){
+   const a=(i+(r()-.5)*.5)/N*6.2832;let k=.88+r()*.24;
+   if(arms.has(i))k=1.1+r()*.1;else if(arms.has((i+1)%N)||arms.has((i+N-1)%N))k*=.93;
+   pts.push([CX+RX*k*Math.cos(a),CY+RY*k*Math.sin(a)]);
+  }
+  const P=i=>pts[(i+N)%N];let d='M'+f(P(0)[0])+' '+f(P(0)[1]);
+  for(let i=0;i<N;i++){const p0=P(i-1),p1=P(i),p2=P(i+1),p3=P(i+2);
+   d+='C'+[p1[0]+(p2[0]-p0[0])/6,p1[1]+(p2[1]-p0[1])/6,p2[0]-(p3[0]-p1[0])/6,p2[1]-(p3[1]-p1[1])/6,p2[0],p2[1]].map(f).join(' ')}
+  let s='<path class="sp" d="'+d+'Z"/><rect class="sp" x="10" y="42" width="116" height="42" rx="10"/>';
+  /* droplets, then a fine spray of dots */
+  for(let i=0;i<8;i++){const a=r()*6.2832,k=1.18+r()*.3;s+='<circle class="sp" cx="'+f(CX+RX*k*Math.cos(a))+'" cy="'+f(CY+RY*k*Math.sin(a)*.8)+'" r="'+f(1.2+r()*2.6)+'"/>'}
+  for(let i=0;i<16;i++){const a=r()*6.2832,k=1.08+r()*.32;s+='<circle class="sp" cx="'+f(CX+RX*k*Math.cos(a))+'" cy="'+f(CY+RY*k*Math.sin(a)*.85)+'" r="'+f(.6+r()*.9)+'"/>'}
+  /* stars: placed so the whole star (not just its center) stays inside the blob and above the letters */
+  const st=[],n=4+Math.floor(r()*3);
+  for(let t=0;st.length<n&&t<200;t++){
+   const R=3.4+r()*3,x=CX-46+r()*92,y=18+r()*22;
+   if(((Math.abs(x-CX)+R)/RX)**2+((Math.abs(y-CY)+R)/RY)**2>.5||y+R>40||st.some(q=>Math.hypot(q[0]-x,q[1]-y)<q[2]+R+3))continue;
+   st.push([x,y,R]);
+  }
+  return{svg:'<svg viewBox="0 0 137 100" aria-hidden="true">'+s+'</svg>',stars:st.map(q=>[q[0],q[1],q[2],Math.floor(r()*4),Math.floor(r()*4),3.4+r()*2.6,r()])};
+ }
+ let seed=0;
+ const nodes=[];
+ /* only the header logo and the About headline (its first mention) get a splash */
+ for(const root of document.querySelectorAll('.logo,[data-page="about"] h1')){
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:n=>/\bmia\b/i.test(n.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_SKIP});
+  while(w.nextNode())nodes.push(w.currentNode);
+ }
+ for(const n of nodes){
+  const frag=document.createDocumentFragment();
+  const parts=n.nodeValue.split(/(\bmia\b)/i);
+  parts.forEach((part,i)=>{
+   if(/^mia$/i.test(part)){const s=document.createElement('span');s.className='mia';const sp=splash(seed++);s.innerHTML=sp.svg+'<canvas></canvas>';s._stars=sp.stars;s.insertBefore(document.createTextNode(part),s.firstChild);frag.appendChild(s)}
+   else if(part){
+    /* word joiner: stops a line break between the splash and a touching quote mark or punctuation */
+    if(i>0&&/^\S/.test(part))part='\u2060'+part;
+    if(i<parts.length-1&&/\S$/.test(part))part+='\u2060';
+    frag.appendChild(document.createTextNode(part));
+   }
+  });
+  n.replaceWith(frag);
+ }
+
+ /* ---- stars: a clean vector star, dithered per screen pixel, fading like an OLED dimming ----
+    The star is rasterised once per zoom level. Each frame a fade level (0-16) is compared against a 4x4 Bayer
+    pattern aligned to real device pixels: pixels switch off in a checker pattern first, then the rest.
+    Pixels are fully paper-colored or fully transparent, so it is strictly two-tone at any zoom. */
+ const BAY=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
+ const oc=document.createElement('canvas'),ox=oc.getContext('2d',{willReadFrequently:true});
+ const boxes=[...document.querySelectorAll('.mia')].map(m=>({cv:m.querySelector('canvas'),css:0,dpr:0,w:0,h:0,
+  stars:m._stars.map(a=>({x:a[0],y:a[1],R:a[2],sx:a[3],sy:a[4],d:a[5],ph:a[6],q:-1}))}));
+ boxes.forEach(b=>b.cx=b.cv.getContext('2d'));
+ function fit(b){
+  const rect=b.cv.getBoundingClientRect(),dp=devicePixelRatio||1;
+  b.css=b.cv.offsetWidth;b.dpr=dp;
+  b.w=Math.max(1,Math.round(rect.width*dp));b.h=Math.max(1,Math.round(rect.height*dp));
+  b.cv.width=b.w;b.cv.height=b.h;
+  const u=b.w/137;
+  for(const st of b.stars){
+   const R=st.R,c=.14*R;
+   const x0=Math.max(0,Math.floor((st.x-R)*u)-1),y0=Math.max(0,Math.floor((st.y-R)*u)-1);
+   st.bx=x0;st.by=y0;st.bw=Math.max(1,Math.min(b.w,Math.ceil((st.x+R)*u)+1)-x0);st.bh=Math.max(1,Math.min(b.h,Math.ceil((st.y+R)*u)+1)-y0);
+   oc.width=st.bw;oc.height=st.bh;
+   ox.setTransform(u,0,0,u,st.x*u-x0,st.y*u-y0);
+   ox.fillStyle='#fff';ox.beginPath();ox.moveTo(0,-R);ox.quadraticCurveTo(c,-c,R,0);ox.quadraticCurveTo(c,c,0,R);ox.quadraticCurveTo(-c,c,-R,0);ox.quadraticCurveTo(-c,-c,0,-R);ox.fill();
+   const d=ox.getImageData(0,0,st.bw,st.bh).data;st.cov=new Uint8Array(st.bw*st.bh);
+   for(let i=0;i<st.cov.length;i++)st.cov[i]=d[i*4+3];
+   st.q=-1;
+  }
+ }
+ let pr=0,pg=0,pb=0,colKey='';
+ function paint(b,st,q){
+  if(q===st.q)return;st.q=q;
+  const id=b.cx.createImageData(st.bw,st.bh),o=id.data,k=q/16;
+  for(let y=0;y<st.bh;y++)for(let x=0;x<st.bw;x++){
+   const i=y*st.bw+x;
+   if(st.cov[i]/255*k>(BAY[(st.by+y+st.sy)&3][(st.bx+x+st.sx)&3]+.5)/16){o[i*4]=pr;o[i*4+1]=pg;o[i*4+2]=pb;o[i*4+3]=255}
+  }
+  b.cx.putImageData(id,st.bx,st.by);
+ }
+ function tick(t){
+  const ck=getComputedStyle(root).getPropertyValue('--paper').trim();
+  if(ck!==colKey){colKey=ck;const c=hex(ck);pr=c[0];pg=c[1];pb=c[2];for(const b of boxes)for(const st of b.stars)st.q=-1}
+  for(const b of boxes){
+   const cw=b.cv.offsetWidth;if(!cw)continue;           /* hidden page: nothing to draw */
+   if(cw!==b.css||(devicePixelRatio||1)!==b.dpr)fit(b);  /* window resized or zoomed */
+   for(const st of b.stars){
+    let q=16;
+    if(!reduce){const c=.5+.5*Math.cos(6.2832*(t/1000/st.d+st.ph));q=Math.round(Math.max(0,Math.min(1,1.7*c-.35))*16)}
+    paint(b,st,q);
+   }
+  }
+  requestAnimationFrame(tick);
+ }
+ requestAnimationFrame(tick);
+})();
+
+const hp=location.hash.slice(1);
+if(PAGES.includes(hp))cur=hp;
+updateInk();
+show(cur);
+requestAnimationFrame(loop);
+
+</script>
+
+</SiteLayout>
