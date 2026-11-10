@@ -1,6 +1,7 @@
 ---
 import SiteLayout from '../../layouts/SiteLayout.astro';
 import { projects } from '../../data/projects';
+import ProjectArtwork from '../../components/ProjectArtwork.astro';
 
 export function getStaticPaths() {
   return projects.map((project) => ({ params: { slug: project.slug }, props: { project } }));
@@ -12,7 +13,8 @@ const { project } = Astro.props;
   <main class="project-detail">
     <a href="/#work">← Back to work</a>
     <h1>{project.title}</h1>
-    <p class="lede">{project.description}</p>
-    <p class="meta">{project.stack}</p>
+    {project.description && <p class="lede">{project.description}</p>}
+    <p class="meta">{project.details}{project.source && <> · <a href={project.source}>Source</a></>}</p>
+    <div class="detail-art"><ProjectArtwork kind={project.slug === 'inky-sudoku' ? 'sudoku' : project.slug === 'inky-blocks' ? 'blocks' : project.slug} /></div>
   </main>
 </SiteLayout>
