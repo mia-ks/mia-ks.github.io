@@ -1,0 +1,44 @@
+---
+import AboutStars from './AboutStars.astro';
+import GitHubContributions from './GitHubContributions.astro';
+---
+<section class="about-sheet" data-page="about" hidden aria-labelledby="about-name">
+  <div class="about-running"><span>02 / About</span><span>A few notes, in no particular order</span></div>
+  <div class="about-intro">
+    <div class="about-masthead">
+      <AboutStars />
+      <h1 class="about-name" id="about-name"><em>mia</em></h1>
+      <p class="about-alias">under stars</p>
+    </div>
+    <div class="about-opening">
+      <p class="about-deck">Small tools.<br />Offline games.<br /><em>Old interfaces.</em></p>
+      <p>I write code, mostly for things I want to use. You might know me as some variation of “mia under stars”.</p>
+    </div>
+  </div>
+  <div class="about-body">
+    <div class="about-story">
+      <h2 class="about-label">It usually starts with wanting something.</h2>
+      <p>pypeg started because I wanted another way to cut and compress video. It began in Python; I’m working on a Rust rewrite.</p>
+      <p>With metropod, I’m giving Metrolist an iPod-style clickwheel. Inky Sudoku and Inky Blocks are a pair of offline puzzle games for iPhone.</p>
+      <p>I also do olympiad programming in Python and sometimes contribute to Minecraft mods.</p>
+      <a class="about-github" href="https://github.com/mia-ks" target="_blank" rel="noopener">Find me on GitHub <span aria-hidden="true">↗</span></a>
+    </div>
+    <GitHubContributions />
+  </div>
+</section>
+
+<style>
+.about-running{display:flex;justify-content:space-between;gap:24px;border-top:1px solid var(--ink);padding-top:12px;font:11px/1.4 var(--ui);letter-spacing:.08em;text-transform:uppercase}
+.about-intro{display:grid;grid-template-columns:1.1fr 1fr;gap:64px;align-items:center;padding:30px 0 48px;border-bottom:1px solid var(--ink)}
+.about-sheet .about-name{font:400 clamp(110px,15vw,176px)/.85 var(--serif);letter-spacing:-.075em;margin:0;padding:0}
+.about-alias{font:italic 32px/1.2 var(--serif);margin:20px 0 0 10px;letter-spacing:-.025em}
+.about-deck{font:400 33px/1.15 var(--serif);letter-spacing:-.025em;margin:0 0 22px}
+.about-opening>p:last-child{font-size:17px;line-height:1.55;max-width:30ch;margin:0}
+.about-body{display:grid;grid-template-columns:1.45fr 1fr;gap:72px;padding:38px 0 48px}
+.about-sheet .about-label{font:500 11px/1.6 var(--ui);text-transform:uppercase;letter-spacing:.075em;border:0;padding:0;margin:0 0 26px}
+.about-story>p{font-size:20px;line-height:1.65;margin-bottom:22px}
+.about-github{display:inline-flex;gap:28px;align-items:center;font:12px/1.4 var(--ui);text-decoration:none;border-bottom:1px solid var(--ink);padding:8px 0;margin-top:8px}
+
+@media(max-width:640px){.about-running{font-size:9px}.about-running span:last-child{max-width:18ch;text-align:right}.about-intro{grid-template-columns:1fr;gap:40px;padding:64px 0 36px}.about-sheet .about-name{font-size:140px}.about-opening{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}.about-deck{font-size:23px;margin:0}.about-opening>p:last-child{font-size:15px}.about-body{grid-template-columns:1fr;gap:36px;padding:30px 0 36px}.about-story{columns:1}.about-story>p{font-size:19px}}
+@media(max-width:380px){.about-opening{grid-template-columns:1fr}}
+</style>

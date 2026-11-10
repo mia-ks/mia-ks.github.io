@@ -87,3 +87,5 @@ footer{margin-top:80px;font:11px var(--ui);color:var(--mute);letter-spacing:.06e
 .proj h3 a:hover{text-decoration:underline}
 
 .project-detail .polaroid{width:min(440px,100%);margin-top:48px}
+
+[data-page="about"]:not([hidden])~footer{margin-top:0;padding-top:16px;border-top:1px solid var(--ink)}

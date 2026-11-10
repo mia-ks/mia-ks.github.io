@@ -1,6 +1,7 @@
 ---
 import SiteLayout from '../layouts/SiteLayout.astro';
 import ProjectCard from '../components/ProjectCard.astro';
+import AboutPage from '../components/AboutPage.astro';
 import StarredName from '../components/StarredName.astro';
 import { projects } from '../data/projects';
 ---
@@ -22,19 +23,7 @@ import { projects } from '../data/projects';
    <h2>Selected work</h2>
    <div id="projects">{projects.map((project, index) => <ProjectCard project={project} index={index} />)}</div>
   </section>
-  <section data-page="about" hidden>
-   <h1>Hello, I’m <StarredName />.</h1>
-   <p class="lede">You might know me as some variant of “mia under stars”.</p>
-   <p>Most of what I make starts as a small, slightly odd problem. pypeg came from wanting an alternative to 8mb.video, and metropod from wanting a music player that feels like an iPod.</p>
-   <p>Away from my own projects, I do olympiad programming in Python and sometimes contribute to Minecraft mods.</p>
-   <h2>Lately</h2>
-   <div class="list">
-    <span>Making</span><span>Inky Sudoku</span><span></span>
-    <span>Making</span><span>Inky Blocks</span><span></span>
-    <span>Competing</span><span>Olympiad programming, in Python</span><span></span>
-    <span>Helping</span><span>Minecraft mods, now and then</span><span></span>
-   </div>
-  </section>
+  <AboutPage />
   <section data-page="contact" hidden>
    <h1>Say <em>hi</em>.</h1>
    <p class="lede">The easiest place to find me is GitHub.</p>
@@ -47,7 +36,7 @@ import { projects } from '../data/projects';
    <h2>About this site</h2>
    <p>It’s a mock of an e-ink display, in a browser. Scroll slowly, then quickly. Wiggle the cursor and let it rest. Hit invert. Switch pages.</p>
   </section>
-  <footer>© 2026 mia under stars — Set in Literata &amp; IBM Plex Mono</footer>
+  <footer>© 2026 mia under stars</footer>
  </div></main>
 </div>
 <div id="spacer"></div>

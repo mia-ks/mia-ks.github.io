@@ -1,0 +1,10 @@
+---
+const stars = [[24,63,4],[53,30,7],[85,75,3],[116,45,10],[147,15,4],[175,70,5],[207,31,13],[246,60,7],[277,16,5],[308,43,9],[342,78,4]];
+const points = [[12,32],[43,88],[77,12],[96,43],[136,83],[164,43],[192,9],[232,89],[263,38],[294,82],[329,10],[359,40]];
+---
+<svg class="about-sky" viewBox="0 0 380 105" aria-hidden="true">
+  {stars.map(([x,y,r]) => <path d={`M${x} ${y-r}Q${x+1} ${y-1} ${x+r} ${y}Q${x+1} ${y+1} ${x} ${y+r}Q${x-1} ${y+1} ${x-r} ${y}Q${x-1} ${y-1} ${x} ${y-r}Z`} fill="var(--ink)" />)}
+  {points.map(([x,y],i) => <circle cx={x} cy={y} r={i%3 === 0 ? 1.4 : .8} fill="var(--ink)" />)}
+  <path d="M206 8v-5m23 27h6m-35 20-3 4M112 29l-2-4M301 29l-3-4" stroke="var(--ink)" stroke-width="1" stroke-linecap="round" />
+</svg>
+<style>.about-sky{display:block;width:100%;max-width:380px;height:auto;margin-bottom:12px}</style>
